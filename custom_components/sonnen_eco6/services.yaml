@@ -1,0 +1,15 @@
+set_mode:
+  name: Set mode
+  description: Set SonnenBatterie operation mode.
+  fields:
+    mode:
+      name: Mode
+      description: One of Auto, Standby, Laden Auto, Laden Standby
+      required: true
+      selector:
+        select:
+          options:
+            - Auto
+            - Standby
+            - Laden Auto
+            - Laden Standby

@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "SonnenBatterie eco 6.0",
+        "description": "Verbinde deine SonnenBatterie über lokale HTTP-Endpoints.",
+        "data": {
+          "host": "Host/IP",
+          "port_data": "Port (Daten)",
+          "port_ctrl": "Port (Steuerung)",
+          "device_num": "DeviceNum (optional)",
+          "scan_interval": "Abfrageintervall (Sekunden)"
+        }
+      }
+    }
+  }
+}
