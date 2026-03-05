@@ -4,13 +4,14 @@ set_mode:
   fields:
     mode:
       name: Mode
-      description: One of Auto, Standby, Laden Auto, Laden Standby
+      description: Set SonnenBatterie operation mode.
       required: true
       selector:
         select:
           options:
-            - Auto
-            - Standby
-            - Schnellladen Auto
+            - Auto (Idle)
+            - Schnellladen dann Auto
             - Angepasst Laden
-            - Schnellladen Standby
+            - Entladen
+            - Standby
+            - Schnellladen dann Standby

@@ -29,9 +29,10 @@ METRICS = {
 
 # Operation modes (your values)
 OP_MODES = {
-    "Auto": 10,
-    "Standby": 20,
-    "Schnellladen Auto": 12,
+    "Auto (Idle)": 10,
+    "Schnellladen dann Auto": 12,
     "Angepasst Laden": 13,
-    "Schnellladen Standby": 22,
+    "Entladen": 15,
+    "Standby": 20,
+    "Schnellladen dann Standby": 22,
 }
