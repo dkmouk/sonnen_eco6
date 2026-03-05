@@ -12,6 +12,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN, OP_MODES
 from .coordinator import SonnenEco6Coordinator
 
+OPT_LAST_SET_MODE = "last_set_mode"
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -51,37 +53,49 @@ class SonnenEco6ModeSelect(CoordinatorEntity[SonnenEco6Coordinator], SelectEntit
 
         self._attr_unique_id = f"{entry.entry_id}_mode_select"
 
+    def _label_for_mode_num(self, num: int) -> str | None:
+        for label, val in OP_MODES.items():
+            if val == num:
+                return label
+        return None
+
     @property
     def current_option(self) -> str | None:
-        """Return the last user-selected mode if known.
-
-        Important: M06 is a *state* (e.g., 13 = charging) and may not reflect the
-        configured operation mode. If M06==13 and the user did not explicitly set
-        mode 13, we show 'Auto' to avoid the UI jumping away from Auto while charging.
-        """
-        store = self.hass.data[DOMAIN][self.entry.entry_id]
-        last_set = store.get("last_set_mode")
-
-        # If we have a remembered mode, prefer it
-        if isinstance(last_set, int):
-            for label, num in OP_MODES.items():
-                if num == last_set:
-                    return label
-
-        # Fallback: infer from M06, but treat 13 as "charging state" (usually under Auto)
+        # 1) Try to interpret current "state" from M06
         m06 = self.coordinator.data.get("M06")
         try:
             state_num = int(float(m06))
         except Exception:
-            return None
+            state_num = None
 
+        # 2) Read last explicitly set mode (persisted in config entry options)
+        last_set = self.entry.options.get(OPT_LAST_SET_MODE)
+        if isinstance(last_set, (int, float, str)):
+            try:
+                last_set = int(float(last_set))
+            except Exception:
+                last_set = None
+        else:
+            last_set = None
+
+        # If M06 is one of our explicit modes (10/12/20/22/13), show it
+        if state_num is not None:
+            direct = self._label_for_mode_num(state_num)
+            if direct is not None and state_num != 13:
+                # For everything except 13, M06 can be shown directly
+                return direct
+
+        # Special handling for 13:
+        # 13 can mean "charging state" under Auto OR the explicitly set mode "Angepasst Laden".
         if state_num == 13:
-            # Charging state: show Auto unless the user explicitly selected 13 before
-            return "Auto" if "Auto" in OP_MODES else None
+            if last_set == 13:
+                return self._label_for_mode_num(13)  # "Angepasst Laden"
+            # otherwise treat it as "Auto is charging"
+            return self._label_for_mode_num(10)  # "Auto"
 
-        for label, num in OP_MODES.items():
-            if num == state_num:
-                return label
+        # If we don't have M06 mapping, fall back to last_set
+        if isinstance(last_set, int):
+            return self._label_for_mode_num(last_set)
 
         return None
 
@@ -91,7 +105,7 @@ class SonnenEco6ModeSelect(CoordinatorEntity[SonnenEco6Coordinator], SelectEntit
         port_ctrl: int = store["port_ctrl"]
         device_num: int = store.get("device_num", 10)
 
-        new_mode = OP_MODES[option]
+        new_mode = int(OP_MODES[option])
         url = (
             f"http://{host}:{port_ctrl}/data_request?"
             f"id=action&output_format=xml&DeviceNum={device_num}"
@@ -103,7 +117,9 @@ class SonnenEco6ModeSelect(CoordinatorEntity[SonnenEco6Coordinator], SelectEntit
             resp = await self._session.get(url)
             resp.raise_for_status()
 
-        # Remember the last explicitly selected operation mode
-        store["last_set_mode"] = int(new_mode)
+        # Persist last set mode so it survives restarts
+        new_opts = dict(self.entry.options)
+        new_opts[OPT_LAST_SET_MODE] = new_mode
+        self.hass.config_entries.async_update_entry(self.entry, options=new_opts)
 
         await self.coordinator.async_request_refresh()
