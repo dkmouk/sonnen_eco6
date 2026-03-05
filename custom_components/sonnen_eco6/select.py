@@ -53,14 +53,34 @@ class SonnenEco6ModeSelect(CoordinatorEntity[SonnenEco6Coordinator], SelectEntit
 
     @property
     def current_option(self) -> str | None:
+        """Return the last user-selected mode if known.
+
+        Important: M06 is a *state* (e.g., 13 = charging) and may not reflect the
+        configured operation mode. If M06==13 and the user did not explicitly set
+        mode 13, we show 'Auto' to avoid the UI jumping away from Auto while charging.
+        """
+        store = self.hass.data[DOMAIN][self.entry.entry_id]
+        last_set = store.get("last_set_mode")
+
+        # If we have a remembered mode, prefer it
+        if isinstance(last_set, int):
+            for label, num in OP_MODES.items():
+                if num == last_set:
+                    return label
+
+        # Fallback: infer from M06, but treat 13 as "charging state" (usually under Auto)
         m06 = self.coordinator.data.get("M06")
         try:
-            mode_num = int(float(m06))
+            state_num = int(float(m06))
         except Exception:
             return None
 
+        if state_num == 13:
+            # Charging state: show Auto unless the user explicitly selected 13 before
+            return "Auto" if "Auto" in OP_MODES else None
+
         for label, num in OP_MODES.items():
-            if num == mode_num:
+            if num == state_num:
                 return label
 
         return None
@@ -82,5 +102,8 @@ class SonnenEco6ModeSelect(CoordinatorEntity[SonnenEco6Coordinator], SelectEntit
         async with async_timeout.timeout(8):
             resp = await self._session.get(url)
             resp.raise_for_status()
+
+        # Remember the last explicitly selected operation mode
+        store["last_set_mode"] = int(new_mode)
 
         await self.coordinator.async_request_refresh()

@@ -11,5 +11,6 @@ set_mode:
           options:
             - Auto
             - Standby
-            - Laden Auto
-            - Laden Standby
+            - Schnellladen Auto
+            - Angepasst Laden
+            - Schnellladen Standby

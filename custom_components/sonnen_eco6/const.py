@@ -31,6 +31,7 @@ METRICS = {
 OP_MODES = {
     "Auto": 10,
     "Standby": 20,
-    "Laden Auto": 12,
-    "Laden Standby": 22,
+    "Schnellladen Auto": 12,
+    "Angepasst Laden": 13,
+    "Schnellladen Standby": 22,
 }
